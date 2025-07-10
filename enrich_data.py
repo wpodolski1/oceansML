@@ -10,6 +10,7 @@ import re
 
 load_dotenv(".env.dev")
 
+
 def open_nc_dataset(filename):
     '''create secure way to snatch raw data'''
     
@@ -63,46 +64,21 @@ elev = ds['elevation']
 elev.plot(cmap='terrain', x='lon', y='lat', figsize=(12, 6))
 plt.show()
 
-# check coords (time is needed to combine with main dataset)
-ds_emission = open_emissions_file('EDGAR_2024_GHG_CO2_1970_TOTALS_emi.nc')
-ds_emission
-
 emission_files = sorted(glob.glob("raw_data/TOTALS_emi_nc/EDGAR_2024_GHG_CO2_*_TOTALS_emi.nc"))
 
 datasets =[]
-for fname in emission_files:
+for f in emission_files:
     # Extract the 4-digit year using regex
-    match = re.search(r'EDGAR_2024_GHG_CO2_(\d{4})_TOTALS_emi\.nc', fname)
-    if match:
-        year = int(match.group(1))
-    else:
-        raise ValueError(f"Could not extract year from filename: {fname}")
-    
-    ds = xr.open_dataset(fname)
-    # Add a 'year' coordinate for this file
-    ds = ds.expand_dims(year=[year])
+    match = re.search(r'EDGAR_2024_GHG_CO2_(\d{4})_TOTALS_emi\.nc', f)
+    year = match.group(1)
+    print(year) #debug
+    ds = xr.open_dataset(f)
+    # Add a 'time' coordinate for this file (year)
+    ds = ds.expand_dims(time=[year])
     datasets.append(ds)
-    
+
+# Concat everything collected in datasets into one file and save
 ds_emissions = xr.concat(datasets, dim='time')
-ds_emissions.to_netcdf('emissions_combined.nc')    
-    
-ds_enriched = open_ncs_dataset_enriched('emissions_combined.nc')
-emissions = ds_enriched['emissions']
+ds_emissions.to_netcdf('emissions_combined_1970-2023.nc') 
 
-small = ds_enriched['emissions'].isel(lat=slice(None, None, 100), lon=slice(None,None,100))
-df_small = small.to_dataframe().reset_index()
-emission = df_small['emissions']
-
-
-fig = px.scatter_geo(
-    df_small,
-    lat='lat', lon='lon',
-    color='emissions',
-    animation_frame='time',
-    color_continuous_scale='RdBu_r',
-    projection='natural earth',
-    title='Global Surface Temperature Anomalies Over Time',
-    height=600
-)
-fig.show()
 
