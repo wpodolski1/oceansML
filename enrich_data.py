@@ -7,9 +7,11 @@ import matplotlib.pyplot as plt
 import glob
 import plotly.express as px
 import re
+from css_formating import css_formating
+
 
 load_dotenv(".env.dev")
-
+css_formating()
 
 def open_nc_dataset(filename):
     '''create secure way to snatch raw data'''
@@ -79,6 +81,11 @@ for f in emission_files:
 
 # Concat everything collected in datasets into one file and save
 ds_emissions = xr.concat(datasets, dim='time')
-ds_emissions.to_netcdf('emissions_combined_1970-2023.nc') 
+ds_emissions.to_netcdf('emissions_combined_1970-2023.nc')
 
+#check dataset
+
+emissions = ds_emissions['emissions']
+
+fig = px.scatter_geo()
 
