@@ -5,7 +5,7 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 
-ds = xr.open_dataset('NOAAGlobalTemp_v6.0.0_gridded_s185001_e202505_c20250608T185757.nc')
+ds = xr.open_dataset('/home/wpodolski/oceans/raw_data/NOAAGlobalTemp_v6.0.0_gridded_s185001_e202505_c20250608T185757.nc')
 print(ds)
 anom = ds['anom'].isel(z=0)
 print(anom)
