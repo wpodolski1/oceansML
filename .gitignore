@@ -16,6 +16,7 @@ opentopodata/
 *.nc
 *.tif
 temps_combined_1970-2024
+enriched_data/
 
 # Ignore VS Code settings
 .vscode/
