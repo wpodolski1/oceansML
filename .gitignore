@@ -14,6 +14,8 @@ __pycache__/
 raw_data/
 opentopodata/
 *.nc
+*.tif
+temps_combined_1970-2024
 
 # Ignore VS Code settings
 .vscode/
