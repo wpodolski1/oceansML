@@ -172,11 +172,6 @@ ds_merged['elev'] = (('lat', 'lon'), elevations)
 
 #check with plot if data looks correct
 
-#tmp: monthly average daily mean temperature celsius
-#stn: number of stations contributing to each interpolation
-#mae: 
-
-
 for var in list(ds_merged.data_vars):
     if not var == 'elev':
         annual_means = ds_merged[var].groupby('time.year').mean(dim=['time', 'lat', 'lon'])
