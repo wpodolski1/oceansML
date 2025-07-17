@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import xarray as xr
+import xesmf as xe
 import rasterio as rio
 import numpy as np
 import matplotlib.pyplot as plt
@@ -80,7 +81,7 @@ ds['elevation'] = (('lat', 'lon'), elevations)
 ds.to_netcdf('enriched_data/enriched_NOAAGlobalTemp.nc', mode='w', format='NETCDF4')
 
 # open enriched datasets
-ds = open_ncs_dataset_enriched('enriched_NOAAGlobalTemp.nc')
+ds_mean = open_ncs_dataset_enriched('enriched_NOAAGlobalTemp.nc')
 
 
 # Sort the dataset by latitude and longitude to ensure proper plotting
@@ -127,11 +128,20 @@ check_lons_lats_min_max_values(temp_files,'tmp')
 
 datasets = []
 for f in temp_files:
+   match = re.search('cru_ts4.09.(\d{4}).(\d{4}).tmp.dat.nc', f)
+   year1 = match.group(1)
+   year2 = match.group(2)
+   print(f"{year1}-{year2}")
    ds = xr.open_dataset(f)
    datasets.append(ds)
    
 ds_temps = xr.concat(datasets, dim='time')
-ds_temps.to_netcdf('temps_combined_1970-2024')
+ds_temps.to_netcdf("raw_data/temps_combined_1970-2024")
 
+# calculate anomaly temp
+baseline = ds_temps['tmp'].groupby('time.month').mean('time')
+anom = ds_temps['tmp'].groupby('time.month') - baseline
+ds_temps['tmp_anomaly'] = anom
 
-#idk doesnt work yet
+# transform monthly dataset into yearly    
+ds_temps_yearly = ds_temps.resample(time='AS').mean(skipna=True)
