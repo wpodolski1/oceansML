@@ -87,10 +87,7 @@ ds_mean = open_ncs_dataset_enriched('enriched_NOAAGlobalTemp.nc')
 # Sort the dataset by latitude and longitude to ensure proper plotting
 ds = ds.sortby(['lat', 'lon'])
 
-#check with plot if data looks correct
-elev = ds['elevation']
-elev.plot(cmap='terrain', x='lon', y='lat', figsize=(12, 6))
-plt.show()
+
 
 # open emission raw datasets
 emission_files = sorted(glob.glob("raw_data/TOTALS_emi_nc/EDGAR_2024_GHG_CO2_*_TOTALS_emi.nc"))
@@ -145,3 +142,53 @@ ds_temps['tmp_anomaly'] = anom
 
 # transform monthly dataset into yearly    
 ds_temps_yearly = ds_temps.resample(time='AS').mean(skipna=True)
+
+# align grid
+
+# regridding method needs to be further checked as it affects emission data badly
+# use 'bilinear' for faster execution
+regridder = xe.Regridder(ds_emissions, ds_temps_yearly, 'conservative')
+ds_emissions_regridded = regridder(ds_emissions)
+
+# align time
+common_time = np.intersect1d(ds_emissions_regridded.time, ds_temps_yearly.time)
+ds_emissions_regridded = ds_emissions_regridded.sel(time=common_time)
+ds_temps_yearly = ds_temps_yearly.sel(time=common_time)
+
+ds_merged = xr.merge([ds_emissions_regridded, ds_temps_yearly])
+
+# add elevation for each lon, lat in dataset
+lats = ds_merged['lat']
+lons = ds_merged['lon']
+
+lon2d, lat2d = np.meshgrid(lons, lats)
+
+with rio.open('opentopodata/data/etopo1/ETOPO1_Ice_g_geotiff.tif') as src:
+    coords = [(float(lon), float(lat)) for lon, lat in zip(lon2d.flatten(), lat2d.flatten())]
+    elevation = np.array([v[0] for v in src.sample(coords)])  # v is a 1-element array per band
+    elevations = elevation.reshape(lat2d.shape)
+    
+ds_merged['elev'] = (('lat', 'lon'), elevations)
+
+#check with plot if data looks correct
+
+#tmp: monthly average daily mean temperature celsius
+#stn: number of stations contributing to each interpolation
+#mae: 
+
+
+for var in list(ds_merged.data_vars):
+    if not var == 'elev':
+        annual_means = ds_merged[var].groupby('time.year').mean(dim=['time', 'lat', 'lon'])
+        plt.figure(figsize=(12,6))
+        annual_means.plot(marker='o')
+        plt.title(f"Annual Mean {var}")
+        plt.xlabel('Year')
+        plt.ylabel('Mean')
+        plt.grid(True)
+        plt.show()
+    else:
+        elev = ds_merged['elev']
+        elev.plot(cmap='terrain', x='lon', y='lat', figsize=(12, 6))
+        plt.show()
+
