@@ -187,3 +187,23 @@ for var in list(ds_merged.data_vars):
         elev.plot(cmap='terrain', x='lon', y='lat', figsize=(12, 6))
         plt.show()
 
+# Select one year (e.g., 2020)
+year = 2020
+ds_year = ds_emissions.sel(time=str(year))
+
+# If you have monthly data, you might want to average over months:
+mean_temp_year = ds_year['emissions'].mean(dim='time')  # shape: (lat, lon)
+
+# Plot using matplotlib
+plt.figure(figsize=(12, 6))
+mean_temp_year.plot(
+    cmap="coolwarm",  # nice color map for temps
+    robust=True,
+    cbar_kwargs={'label': 'Mean Temperature (°C)'}
+)
+plt.title(f"Spatial Distribution of Mean Temperature ({year})")
+plt.xlabel("Longitude")
+plt.ylabel("Latitude")
+plt.show()
+
+
