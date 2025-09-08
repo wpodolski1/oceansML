@@ -13,6 +13,13 @@ __pycache__/
 # Ignore large data files
 raw_data/
 opentopodata/
+test_scripts/
+outtakes/
+models/
+czysciec/
+scalers/
+bleaching_data/
+data_loaders/
 *.nc
 *.tif
 temps_combined_1970-2024
@@ -20,3 +27,6 @@ enriched_data/
 
 # Ignore VS Code settings
 .vscode/
+
+# Ignore jupyter notebooks
+*.ipynb
