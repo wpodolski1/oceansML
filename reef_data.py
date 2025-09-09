@@ -43,7 +43,7 @@ def open_nc_dataset(filename):
     return ds
 
 
-def add_reef_mask(filename):
+def add_reef_mask(filename, reef_only_return: bool):
     """
     Adds a coral reef mask to the SST NetCDF file and saves the augmented dataset.
 
@@ -113,48 +113,23 @@ def add_reef_mask(filename):
         dims=('lat', 'lon'),
         name='reef_mask'
     )
+    
+    reef_points_mask = xr.DataArray(
+    reef_mask_da.astype(bool).values,  # convert to boolean
+    coords={'lat': ds_tmps['lat'], 'lon': ds_tmps['lon']},
+    dims=('lat', 'lon'),
+    name='reef_points'
+    )
     # Assign reef mask as feature into SST 
-
-    reef_points = ds_tmps['sst'].where(reef_mask_da)
     
     reef_only = ds_tmps['sst'].where(reef_mask_da).stack(points=("lat", "lon")).dropna("points")
     
-    return reef_only
-
-def calculate_bleaching_bins(ds):
-    # Load baseline climatology
-    ds_baseline = xr.open_dataset("sst_data/sst.day.mean.1985.nc")
-    
-    sst = ds["sst"]
-    sst_baseline = ds_baseline["sst"]
-    
-    # Monthly climatology
-    monthly_mean_baseline = sst_baseline.groupby("time.month").mean("time")
-    max_monthly_mean_baseline = monthly_mean_baseline.max(dim="month")
-    
-    # Hotspot = SST anomaly above max monthly mean
-    hotspot = sst - max_monthly_mean_baseline
-    hotspot_threshold = hotspot.where(hotspot > 1.0, 0)
-    
-    # Degree Heating Weeks (DHW)
-    dhw = (
-        hotspot_threshold
-        .chunk({"time": 30})
-        .rolling(time=84, min_periods=1)
-        .sum() / 7
-    )
-    
-    # Require full 84-day coverage
-    dhw = dhw.where(
-        hotspot_threshold.rolling(time=84, min_periods=84).count() == 84, 0
-    )
-    
-    # Add results to dataset
-    ds["dhw"] = dhw
-    ds["hotspot"] = hotspot
-    
-    return ds
-
+    if reef_only_return == True:
+        return reef_only
+    else:  
+        ds_out = ds_tmps.copy()
+        ds_out['reef_points'] = reef_points_mask
+        return ds_out
 
 
 def merge_ds(path="reef_sst", dim='points'):
@@ -210,7 +185,7 @@ if __name__ == "__main__":
             raise ValueError("Year not found in filename.")
         
         if not (DATA_PATH_SST / f"reef_sst_{year}.nc").exists():
-            ds = add_reef_mask(filename)
+            ds = add_reef_mask(filename, reef_only_return=True)
             
             print(ds)
             

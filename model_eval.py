@@ -14,6 +14,8 @@ from time_series import PredictionModel, create_scaler_and_apply, load_ds_to_df
 from torch.serialization import safe_globals
 import joblib
 from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import r2_score
 
 # Load environment variables
 load_dotenv(".env.dev")
@@ -119,8 +121,14 @@ if __name__ == "__main__":
     y_test_preds, y_test = make_predictions(test_loader=test_loader,
                                             y_scaler=y_scaler)
     
-    test_rmse = root_mean_squared_error(y_test, y_test_preds)
-    print(test_rmse)
+    rmse = root_mean_squared_error(y_test, y_test_preds)
+    mae = mean_absolute_error(y_test, y_test_preds)
+    r2 = r2_score(y_test, y_test_preds)
+    bias = (y_test_preds - y_test).mean()
+    
+    print(f"RMSE:{rmse:2f}°C\nMAE:{mae:.2f}°C\nR2:{r2:.2f}\nBias:{bias:.2f}°C")
+    
+    
     
     df = load_ds_to_df(filename="merged_reef_data.nc")
     
@@ -129,5 +137,7 @@ if __name__ == "__main__":
                                                    y_test_preds=y_test_preds,
                                                    seq_length=90,
                                                    train_size=0.8)
+    
+    
     
     plot_preds(df=results_df)
