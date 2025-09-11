@@ -106,7 +106,7 @@ def plot_preds(df):
     plt.xticks(rotation=45)
     plt.show()
     
-
+11
 if __name__ == "__main__":
     
     train_loader, test_loader = data_loaders(batch_size=512)
