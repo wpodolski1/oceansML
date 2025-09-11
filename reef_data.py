@@ -43,7 +43,7 @@ def open_nc_dataset(filename):
     return ds
 
 
-def add_reef_mask(filename, reef_only_return: bool):
+def add_reef_mask(filename, reef_only_return: bool, ds=None):
     """
     Adds a coral reef mask to the SST NetCDF file and saves the augmented dataset.
 
@@ -53,9 +53,11 @@ def add_reef_mask(filename, reef_only_return: bool):
     Returns:
         None. The augmented dataset is saved as 'reef_sst_{year}.nc' in the 'reef_sst' directory.
     """
-    
-    # Open SST dataset
-    ds_tmps = open_nc_dataset(filename)
+    if ds is None:
+        # Open SST dataset
+        ds_tmps = open_nc_dataset(filename)
+    else:
+        ds_tmps = ds
     # Open coral reef file (polygons)
     reefs = gpd.read_file("raw_data/01_Data/WCMC008_CoralReef2018_Py_v4_1.shp")
         
@@ -149,7 +151,7 @@ def merge_ds(path="reef_sst", dim='points'):
     
     return merged
     
-def save(ds, year):
+def save(ds, year, name, path):
     """
     Save to local dir
     """
@@ -158,9 +160,12 @@ def save(ds, year):
         ds = ds.reset_index('points')
     
     # Define path
-    DATA_PATH = Path("reef_sst")
+    DATA_PATH = Path(path)
     DATA_PATH.mkdir(parents=True, exist_ok=True)
-    DATA_NAME = f"reef_sst_{year}.nc"
+    if year is not None:
+        DATA_NAME = f"reef_sst_{year}.nc"
+    else:
+        DATA_NAME = name
     DATA_FULL_PATH = DATA_PATH / DATA_NAME
     
     # Save ds to netcdf 
@@ -189,7 +194,7 @@ if __name__ == "__main__":
             
             print(ds)
             
-            save(ds, year)
+            save(ds, year, path="reef_sst")
     
       
     merged = merge_ds(path="reef_sst",
