@@ -121,15 +121,14 @@ pip install -r requirements.txt
 - **Hotspot visualization**: bleaching thresholds applied to 2022–2023 SST data showed global reef stress patterns.  
 - **LSTM performance**: achieved *[add metrics here]* on SST time series forecasting for reef locations.  
 
-> Add plots (time series predictions, hotspot maps) and tables with metrics here.
+![Model eval](https://i.imgur.com/E6BNK9x.png)
 
-[Model eval][https://i.imgur.com/E6BNK9x.png]
-
-RMSE:0.557272°C
-MAE:0.38°C
-R2:0.90
-Bias:-0.05°C
-
+```
+RMSE: 0.56°C
+MAE: 0.38°C
+R2: 0.90
+Bias: -0.05°C
+```
 ---
 
 ## Roadmap
@@ -153,14 +152,6 @@ Bias:-0.05°C
 - [ ] **Visualization**  
   Build an interactive dashboard to visualize bleaching events.  
   
-
----
-
-## Acknowledgments
-
-- **NOAA PSL** — for SST datasets  
-- **UNEP-WCMC Ocean+ Habitats** — for coral reef polygons  
-- Python scientific ecosystem: `numpy`, `pandas`, `matplotlib`, `scikit-learn`, `tensorflow/keras`  
 
 ---
 
