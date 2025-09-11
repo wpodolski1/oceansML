@@ -119,7 +119,7 @@ pip install -r requirements.txt
 
 - **Baseline climatology**: MMM derived from 1985–1990 & 1993 SST data.  
 - **Hotspot visualization**: bleaching thresholds applied to 2022–2023 SST data showed global reef stress patterns.  
-- **LSTM performance**: achieved *[add metrics here]* on SST time series forecasting for reef locations.  
+- **LSTM performance**: achieved on SST time series forecasting for reef locations.  
 
 ![Model eval](https://i.imgur.com/E6BNK9x.png)
 
