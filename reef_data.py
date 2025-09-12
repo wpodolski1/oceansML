@@ -1,20 +1,3 @@
-"""
-reef_data.py
-
-This module provides functions to enrich SST (Sea Surface Temperature) dataset from NOAA (National Oceanid and Atmospheric Administration)
-with:
-coral reef gridded dataset from:
-bleaching dataset from:
-and extracts reef points for further analysis.
-
-Functions:
-- add_reef_mask(filename): Adds a coral reef mask to the SST dataset and saves the result.
-- add_bleaching_and_create_reefpoints(filename): Adds bleaching event data and extracts reef points as an XArray DataSet.
-
-Author: Wojciech Podolski
-Date: 2025-08-28
-"""
-
 from dotenv import load_dotenv
 import xarray as xr
 import numpy as np
@@ -36,7 +19,14 @@ load_dotenv(".env.dev")
 DATA_PATH_SST = Path(os.getenv("DATA_PATH_SST"))
 
 def open_nc_dataset(filename):
-    '''create secure way to snatch raw data'''
+    '''
+    create secure way to snatch raw data
+    
+    Args:
+        filename (str): name of .nc dataset
+    Return:
+        xr.Dataset
+    '''
 
     my_file = os.path.join(DATA_PATH_SST, filename)
     ds = xr.open_dataset(my_file, engine='netcdf4')
@@ -47,9 +37,8 @@ def add_reef_mask(filename, reef_only_return: bool, ds=None):
     """
     Adds a coral reef mask to the SST NetCDF file and saves the augmented dataset.
 
-    Parameters:
-        filename (str): Path to the input NetCDF SST file.
-
+    Args:
+        filename (str): Path to the input NetCDF SST file
     Returns:
         None. The augmented dataset is saved as 'reef_sst_{year}.nc' in the 'reef_sst' directory.
     """
@@ -137,6 +126,10 @@ def add_reef_mask(filename, reef_only_return: bool, ds=None):
 def merge_ds(path="reef_sst", dim='points'):
     """
     Merge nc datasets into one file
+    
+    Args:
+        path (str) (default:"reef_sst"): path to dir where merging will take place
+        dim (str): dimention across which merging will take place
     """
     
     PATH = Path(path)
@@ -153,7 +146,21 @@ def merge_ds(path="reef_sst", dim='points'):
     
 def save(ds, year, name, path):
     """
-    Save to local dir
+     Save an xarray.Dataset (.nc dataset) to a local directory as a NetCDF file.
+
+    The function ensures the target directory exists, optionally resets a MultiIndex on the 'points' dimension,
+    and saves the dataset with a filename based on the year (if provided) or a custom name.
+
+    Args:
+        ds (xarray.Dataset): The dataset to be saved. If the 'points' dimension has a MultiIndex,
+            it will be reset to a regular index before saving.
+        year (int or None): The year corresponding to the dataset. If provided, the filename will be
+            formatted as 'reef_sst_{year}.nc'. If None, the 'name' argument is used as the filename.
+        name (str): The filename to use if 'year' is None.
+        path (str or Path): The directory path where the NetCDF file will be saved.
+
+    Returns:
+        None
     """
     
     if 'points' in ds.dims and isinstance(ds.indexes['points'], pd.MultiIndex):
@@ -175,9 +182,11 @@ def save(ds, year, name, path):
 
 
 if __name__ == "__main__":
-   
+    
+    # Path to dir where files are located
     files = sorted(DATA_PATH_SST.glob("*.nc"))
     
+    # Add reef mask to files in dir and save in reef_sst dir
     for f in files:
         
         
@@ -196,10 +205,11 @@ if __name__ == "__main__":
             
             save(ds, year, path="reef_sst")
     
-      
+    # merge files in reef_sst dir
     merged = merge_ds(path="reef_sst",
                         dim="time")
     
+    # save merged file
     merged.to_netcdf("raw_data/merged_reef_data.nc")
 
         

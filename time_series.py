@@ -25,6 +25,11 @@ def load_ds_to_df(filename):
     """
     Load NetCDF dataset and convert to Pandas DataFrame.
     Filter the data
+    
+    Args:
+        filename (str or Path): Filename of NetCDF dataset to convert
+    Return:
+        df (pd.DataFrame): converted dataframe
     """
     ds = open_nc_dataset(filename=filename)
     ds = ds.sel(time=slice("2016", None))
@@ -36,6 +41,11 @@ def load_ds_to_df(filename):
 def feature_engineering(df):
     """
     Add day of year feature to capture sesonality
+    
+    Args:
+        df (pd.DataFrame): daily dataframe with 'time' index
+    Returns:
+        pd.DataFrame: dataframe with 'day_sin' and 'day_cos' features
     """
     df['day_of_year'] = df['time'].dt.dayofyear
     
@@ -46,8 +56,13 @@ def feature_engineering(df):
 
 def calculate_seq_length_of_features(df, seq_length):
     """
-    Transform time series into sequences for LSTM model training.
-    seq_lengt: sliding window length
+    Transform time series into overlapping sequences for LSTM model training.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing columns 'sst', 'lat', 'lon', 'day_sin', and 'day_cos'.
+    Returns:
+        np.ndarray: 3D numpy array of shape (num_sequences, seq_length, num_features),
+            where num_features = 5 (sst, lat, lon, day_sin, day_cos).
     """
     
     sst_array = df['sst'].values
@@ -69,7 +84,12 @@ def calculate_seq_length_of_features(df, seq_length):
 def test_train_split(data, train_size: float):
     """
     Split dataset into test-train
-    train_size: length of split(0-1) as float
+    
+    Args:
+        train_size (float): length of test-train split (0-1)
+    Returns:
+        tuple: (X_train, X_test, y_train, y_test) of torch.FloatTensor type.
+            
     """
     train_size_value = int(train_size*len(data))
     
@@ -83,7 +103,19 @@ def test_train_split(data, train_size: float):
 
 def create_scaler_and_apply(X_train, X_test, y_train, y_test, return_scalers_only):
     """
-    Normalize input and features using scikit's learn StandardScaler
+    Normalize input features and targets using scikit's learn StandardScaler
+    
+    Args:
+        X_train (torch.FloatTensor): Training features
+        X_test (torch.FloatTensor): Testing features
+        y_train (torch.FloatTensor): Training targets
+        y_test (torch.FloatTensor): Testing targets
+        return_scalers_only (Bool): if True return only fitted Scaler
+    Returns:
+        if return_scaler_only == True:
+            (X_scaler, y_scaler): fitted StandardScallers for X and Y
+        if return_scaler_only == False:
+            (X_train_scaled, X_test_scaled, y_train_scaled, y_test_scaled) where each is a numpy array
     """
     num_samples_train, seq_len, num_features = X_train.shape
     num_samples_test = X_test.shape[0]
@@ -103,8 +135,6 @@ def create_scaler_and_apply(X_train, X_test, y_train, y_test, return_scalers_onl
     y_test_scaled = y_scaler.transform(y_test.reshape(-1, 1))
     joblib.dump(y_scaler, 'scalers/y_scaler.pkl')
     
-    
-    
     if not return_scalers_only:
     # Return everything
         return X_train_scaled, X_test_scaled, y_train_scaled, y_test_scaled
@@ -116,7 +146,25 @@ def create_scaler_and_apply(X_train, X_test, y_train, y_test, return_scalers_onl
 
 class PredictionModel(nn.Module):
     """
-    LSTM based regression model for SST prediction on reef-points
+    LSTM-based regression model for Sea Surface Temperature (SST) prediction on reef points.
+
+    This model consists of an LSTM layer followed by a fully connected layer.
+    It is designed to take a sequence of feature vectors as input and produce a single regression output per sample.
+
+    Args:
+        input_dim (int): Number of input features per time step.
+        hidden_dim (int): Number of features in the hidden state of the LSTM.
+        num_layers (int): Number of recurrent layers in the LSTM.
+        output_dim (int): Number of output features (typically 1 for regression).
+        
+    Methods:
+        forward(x):
+            Runs a forward pass through the model.
+            Args:
+                x (torch.Tensor): Input tensor of shape (batch_size, seq_length, input_dim).
+            Returns:
+                torch.Tensor: Output tensor of shape (batch_size, output_dim),
+                              corresponding to the regression prediction for each input sequence.
     """
     def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
         super(PredictionModel, self).__init__()
@@ -139,12 +187,32 @@ class PredictionModel(nn.Module):
 
 #### DATA LOADER ####
 
-def data_loaders(X_train_scaled, X_test_scaled, y_train_scaled, y_test_scaled,batch_size: int):
+def data_loaders(X_train_scaled, X_test_scaled, y_train_scaled, y_test_scaled, batch_size: int):
     """
-    Convert NumPy arrays to tensors and dataloaders, save preprocessed data for future evaluating.
+    Converts preprocessed NumPy arrays into PyTorch TensorDatasets and DataLoaders, and saves them for future use.
+
+    Creates TensorDatasets for training and testing data from scaled feature and target arrays,
+    saves them as .pth file
+
+    Args:
+        X_train_scaled (np.ndarray): Scaled training features 
+        X_test_scaled (np.ndarray): Scaled testing features 
+        y_train_scaled (np.ndarray): Scaled training labels 
+        y_test_scaled (np.ndarray): Scaled testing labels 
+        batch_size (int): Number of samples per batch to load in DataLoader.
+
+    Returns:
+        tuple:
+            - train_loader (torch.utils.data.DataLoader): DataLoader for the training dataset.
+            - test_loader (torch.utils.data.DataLoader): DataLoader for the testing dataset.
+
+    Side Effects:
+        - Saves the train and test TensorDataset objects in the directory "data_loaders" as "train_dataset.pth" and "test_dataset.pth".
+        - Creates the "data_loaders" directory if it does not exist.
+
+    Notes:
+        - Does not shuffle the data in the DataLoader to preserve sequence order, which may be important for time series tasks.
     """
-   
-    
     train_dataset = TensorDataset(
                                 torch.from_numpy(X_train_scaled).float(),
                                 torch.from_numpy(y_train_scaled).float()
@@ -182,7 +250,23 @@ def train_eval_loop(model,
                     weight_decay=1e-4,
                     print_every=100):
     """
-    Training + evaluation loop with rate scheduling.
+    Training and evaluation loop for PyTorch regression models, with learning rate scheduling.
+
+    This function trains the provided model using mean squared error loss, Adam optimizer, and
+    ReduceLROnPlateau learning rate scheduler.
+
+    Args:
+        model (torch.nn.Module): The model to train and evaluate.
+        train_loader (torch.utils.data.DataLoader): DataLoader for the training dataset.
+        test_loader (torch.utils.data.DataLoader): DataLoader for the testing dataset.
+        epochs (int): Number of epochs to train for.
+        device (torch.device): Device to use for computation
+        lr (float, optional): Initial learning rate for the optimizer. Default is 0.001.
+        weight_decay (float, optional): L2 weight decay (regularization). Default is 1e-4.
+        print_every (int, optional): Print training status every N epochs. Default is 100.
+
+    Returns:
+        None
     """
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -244,6 +328,28 @@ def train_eval_loop(model,
         if epoch % print_every == 0:
             print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.6f} | Test Loss: {test_loss:.6f}")
     
+def save_model(name, model):
+    """
+    Save model to .pth file for future use
+    
+    Args:
+        name (str): Model name
+        model (torch.nn.Module): Model to save
+        
+    Returns:
+        None
+    
+    Notes:
+        Creates "models" directory if doesn't exist and saves smodel to "models" directory
+        
+    """
+    MODEL_PATH = Path("models")
+    MODEL_PATH.mkdir(parents=True, exist_ok=True)
+
+    MODEL_NAME = name
+    MODEL_SAVE_PATH = MODEL_PATH / MODEL_NAME
+    
+    torch.save(model, MODEL_SAVE_PATH)
 
 if __name__ == "__main__":
 
@@ -280,6 +386,7 @@ if __name__ == "__main__":
     # Create data loaders
     train_loader, test_loader = data_loaders(X_train_scaled, X_test_scaled, y_train_scaled, y_test_scaled, batch_size=512)
     
+    
     # Train and eval model
     train_eval_loop(model=model,
                     train_loader=train_loader,
@@ -290,7 +397,8 @@ if __name__ == "__main__":
                     weight_decay=1e-4,
                     print_every=1) 
 
-
-
+    # Save model to .pth file
+    save_model(name="LSTM_REEF_POINTS_SST_TRAINED_YEAR_2016",
+               model=model)
 
 

@@ -24,6 +24,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def data_loaders(batch_size):
+    """
+    Loads training and testing datasets and returning DataLoaders.
+    
+    Args:
+        batch_size (int): Batch size to use with data loader
+        
+    Returns:
+        train loader & test loader
+    """
+    
     DATA_PATH = Path("data_loaders")
     
     with safe_globals([TensorDataset]):
@@ -36,6 +46,17 @@ def data_loaders(batch_size):
     return train_loader, test_loader
 
 def model_import(PATH, MODEL_NAME, device=device):
+    """
+    Load trained model from path
+    
+    Args:
+        PATH (Path): dir where model is saved
+        MODEL_NAME (str): Name of the model
+        device (torch.device): Device to load the model (gpu recommended)
+        
+    Returns:
+        pretrained model
+    """
     
     MODEL_PATH = Path(PATH)
     MODEL_LOAD_PATH = MODEL_PATH / MODEL_NAME
@@ -53,6 +74,15 @@ def model_import(PATH, MODEL_NAME, device=device):
     return model
     
 def make_predictions(test_loader, y_scaler):
+    """
+    Use to make predictions on dataset within torch.inference_mode:
+    Args:
+        test_loader (Dataloader): test dataloader
+        y_scaler (sklearn's scaler): Saved scaler to inverser.transform data
+        
+    Returns:
+        original test data and predictions
+    """
     with torch.inference_mode():
         
         y_preds_list = []
@@ -76,6 +106,19 @@ def make_predictions(test_loader, y_scaler):
         
 
 def apply_predictions_to_main_dataset(df, y_test, y_test_preds, seq_length, train_size):
+    """
+    Aligns predictions with original df and returns df with actual + predicted values
+    
+    Args:
+        df (pd.DataFrame): original df
+        y_test (np.ndarray) : test data (actual)
+        y_test_preds (np.ndarray): predicted test values
+        seq_length (int): sequence length used for training
+        train_size (float): size of train test split
+        
+    Returns:
+        Combined pd.DataFrame with aligned predictions along original data
+    """
     
     num_sequences = len(df) - seq_length + 1
     num_train = int(train_size * num_sequences)
@@ -92,6 +135,14 @@ def apply_predictions_to_main_dataset(df, y_test, y_test_preds, seq_length, trai
     return results_df
     
 def plot_preds(df):
+    """
+    Visualize predictions vs test data
+    
+    Args:
+        df (pd.DataFrame): df with aligned predictions and original data across dims
+        
+    Returns: None
+    """
     # Group by month (1-12, across all years)
     actual_mean = df.groupby(df["time"].dt.to_period("M"))["actual_sst"].mean()
     pred_mean = df.groupby(df["time"].dt.to_period("M"))["predicted_sst"].mean()
@@ -106,21 +157,25 @@ def plot_preds(df):
     plt.xticks(rotation=45)
     plt.show()
     
-11
 if __name__ == "__main__":
     
+    # Load train_loader and test_loader
     train_loader, test_loader = data_loaders(batch_size=512)
     
+    # Import trained model
     model = model_import(PATH="models",
                          MODEL_NAME="LSTM_REEF_POINTS_SST.pth",
                          device=device)
     
+    # Import scalers used to prepare data for modeling
     X_scaler = joblib.load("scalers/X_scaler.pkl")
     y_scaler = joblib.load("scalers/y_scaler.pkl")
     
+
     y_test_preds, y_test = make_predictions(test_loader=test_loader,
                                             y_scaler=y_scaler)
     
+    # Model eval metrics
     rmse = root_mean_squared_error(y_test, y_test_preds)
     mae = mean_absolute_error(y_test, y_test_preds)
     r2 = r2_score(y_test, y_test_preds)
@@ -129,7 +184,7 @@ if __name__ == "__main__":
     print(f"RMSE:{rmse:2f}°C\nMAE:{mae:.2f}°C\nR2:{r2:.2f}\nBias:{bias:.2f}°C")
     
     
-    
+    # Load SST data (merged yearly sst files)
     df = load_ds_to_df(filename="merged_reef_data.nc")
     
     results_df = apply_predictions_to_main_dataset(df=df,
@@ -139,5 +194,5 @@ if __name__ == "__main__":
                                                    train_size=0.8)
     
     
-    
+    # Plot predictions vs historical data
     plot_preds(df=results_df)
