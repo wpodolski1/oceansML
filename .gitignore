@@ -30,3 +30,16 @@ enriched_data/
 
 # Ignore jupyter notebooks
 *.ipynb
+
+# Local raw/extracted datasets and nested data repositories are not source code.
+# No public sample data are currently tracked under data/.
+/data/
+/14_001_WCMC008_CoralReefs*/
+/WCMC008_CoralReefs*.zip
+
+# Generated source-data map; review attribution before any publication.
+/reef_world_map.png
+
+# Development caches
+.pytest_cache/
+.ruff_cache/
